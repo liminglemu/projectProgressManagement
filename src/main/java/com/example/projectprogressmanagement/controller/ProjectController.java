@@ -24,6 +24,10 @@ public class ProjectController {
         return (String) request.getAttribute("realName");
     }
 
+    private String currentRole(HttpServletRequest request) {
+        return (String) request.getAttribute("role");
+    }
+
     @GetMapping
     public Result<Page<Project>> page(
             @RequestParam(defaultValue = "1") Integer pageNum,
@@ -31,7 +35,8 @@ public class ProjectController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String phase,
             HttpServletRequest request) {
-        return Result.ok(projectService.page(pageNum, pageSize, keyword, phase, currentUser(request)));
+        return Result.ok(projectService.page(pageNum, pageSize, keyword, phase,
+                currentUser(request), currentRole(request)));
     }
 
     @GetMapping("/{id}")
@@ -52,7 +57,7 @@ public class ProjectController {
 
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
-        projectService.removeById(id);
+        projectService.deleteById(id);
         return Result.ok();
     }
 
@@ -63,6 +68,6 @@ public class ProjectController {
 
     @GetMapping("/stats")
     public Result<Map<String, Object>> stats(HttpServletRequest request) {
-        return Result.ok(projectService.getStats(currentUser(request)));
+        return Result.ok(projectService.getStats(currentUser(request), currentRole(request)));
     }
 }

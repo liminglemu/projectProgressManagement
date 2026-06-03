@@ -28,12 +28,14 @@ public class WeeklyReportController {
     }
 
     @PostMapping
-    public Result<WeeklyReport> save(@RequestBody WeeklyReport report, HttpServletRequest request) {
-        return Result.ok(weeklyReportService.save(report, currentUser(request)));
+    public Result<String> save(@RequestBody WeeklyReport report, HttpServletRequest request) {
+        weeklyReportService.insertReport(report, currentUser(request));
+        return Result.ok();
     }
 
     @PostMapping("/batch")
-    public Result<List<WeeklyReport>> batchSave(@RequestBody List<WeeklyReport> reports, HttpServletRequest request) {
-        return Result.ok(weeklyReportService.batchSave(reports, currentUser(request)));
+    public Result<String> batchSave(@RequestBody List<WeeklyReport> reports, HttpServletRequest request) {
+        weeklyReportService.batchSaveReports(reports, currentUser(request));
+        return Result.ok();
     }
 }

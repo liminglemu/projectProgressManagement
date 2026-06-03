@@ -31,7 +31,7 @@ public class AuthServiceImpl implements AuthService {
         if (!user.getPassword().equals(DigestUtil.md5Hex(request.getPassword()))) {
             throw new RuntimeException("密码错误");
         }
-        String token = jwtUtil.generateToken(user.getUsername(), user.getRealName());
+        String token = jwtUtil.generateToken(user.getUsername(), user.getRealName(), user.getRole());
         return new LoginResponse(token, user.getRealName(), user.getUsername());
     }
 }

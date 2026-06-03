@@ -3,23 +3,41 @@ package com.example.projectprogressmanagement.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.projectprogressmanagement.entity.Project;
 import com.example.projectprogressmanagement.mapper.ProjectMapper;
 import com.example.projectprogressmanagement.service.ProjectService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-public class ProjectServiceImpl extends ServiceImpl<ProjectMapper, Project> implements ProjectService {
+@Transactional(readOnly = true)
+public class ProjectServiceImpl implements ProjectService {
+
+    private final ProjectMapper projectMapper;
+
+    public ProjectServiceImpl(ProjectMapper projectMapper) {
+        this.projectMapper = projectMapper;
+    }
+
+    private boolean isAdmin(String role) {
+        return "ADMIN".equals(role);
+    }
 
     @Override
-    public Page<Project> page(Integer pageNum, Integer pageSize, String keyword, String phase, String currentUser) {
+    public Project getById(Long id) {
+        return projectMapper.selectById(id);
+    }
+
+    @Override
+    public Page<Project> page(Integer pageNum, Integer pageSize, String keyword, String phase, String currentUser, String role) {
         LambdaQueryWrapper<Project> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Project::getLeaderName, currentUser);
+        if (!isAdmin(role)) {
+            wrapper.eq(Project::getLeaderName, currentUser);
+        }
         if (StringUtils.hasText(keyword)) {
             wrapper.and(w -> w.like(Project::getProjectName, keyword)
                     .or().like(Project::getProjectNo, keyword));
@@ -28,33 +46,41 @@ public class ProjectServiceImpl extends ServiceImpl<ProjectMapper, Project> impl
             wrapper.eq(Project::getPhase, phase);
         }
         wrapper.orderByDesc(Project::getUpdateTime);
-        return page(new Page<>(pageNum, pageSize), wrapper);
+        return projectMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
     }
 
     @Override
+    @Transactional
     public Project create(Project project, String currentUser) {
         project.setCreateBy(currentUser);
         if (!StringUtils.hasText(project.getLeaderName())) {
             project.setLeaderName(currentUser);
         }
-        save(project);
+        projectMapper.insert(project);
         return project;
     }
 
     @Override
+    @Transactional
     public Project update(Project project) {
-        Project existing = getById(project.getId());
+        Project existing = projectMapper.selectById(project.getId());
         if (existing == null) {
             throw new RuntimeException("项目不存在");
         }
         BeanUtil.copyProperties(project, existing, "id", "createTime", "createBy", "deleted");
-        updateById(existing);
+        projectMapper.updateById(existing);
         return existing;
     }
 
     @Override
+    @Transactional
+    public void deleteById(Long id) {
+        projectMapper.deleteById(id);
+    }
+
+    @Override
     public List<String> getAllLeaders() {
-        return list().stream()
+        return projectMapper.selectList(null).stream()
                 .map(Project::getLeaderName)
                 .filter(StringUtils::hasText)
                 .distinct()
@@ -62,9 +88,14 @@ public class ProjectServiceImpl extends ServiceImpl<ProjectMapper, Project> impl
     }
 
     @Override
-    public Map<String, Object> getStats(String currentUser) {
-        List<Project> myProjects = list(new LambdaQueryWrapper<Project>()
-                .eq(Project::getLeaderName, currentUser));
+    public Map<String, Object> getStats(String currentUser, String role) {
+        List<Project> myProjects;
+        if (isAdmin(role)) {
+            myProjects = projectMapper.selectList(null);
+        } else {
+            myProjects = projectMapper.selectList(new LambdaQueryWrapper<Project>()
+                    .eq(Project::getLeaderName, currentUser));
+        }
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", myProjects.size());

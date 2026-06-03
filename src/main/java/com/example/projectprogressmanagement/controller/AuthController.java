@@ -36,6 +36,7 @@ public class AuthController {
         Map<String, String> info = new HashMap<>();
         info.put("username", (String) request.getAttribute("username"));
         info.put("realName", (String) request.getAttribute("realName"));
+        info.put("role", (String) request.getAttribute("role"));
         return Result.ok(info);
     }
 }
